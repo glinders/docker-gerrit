@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# backup selected directories and files in /var/gerrit; name it 'gerrit'
+cd /var/gerrit
+/tar-backup gerrit review_site

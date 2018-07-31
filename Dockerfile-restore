@@ -1,0 +1,12 @@
+# Use the same image as the service
+# This way we don't use any additional disk space
+# and the volumes are already defined
+ARG SERVICE_IMAGE
+FROM ${SERVICE_IMAGE}
+
+# common file is identical for backup and restore; so reuse the original
+ADD common-backup /common-restore
+ADD tar-restore /tar-restore
+ADD gerrit-restore /gerrit-restore
+
+CMD ["/gerrit-restore"]

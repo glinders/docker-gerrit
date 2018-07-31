@@ -1,0 +1,11 @@
+# Use the same image as the service
+# This way we don't use any additional disk space
+# and the volumes are already defined
+ARG SERVICE_IMAGE
+FROM ${SERVICE_IMAGE}
+
+ADD common-backup /common-backup
+ADD tar-backup /tar-backup
+ADD gerrit-backup /gerrit-backup
+
+CMD ["/gerrit-backup"]

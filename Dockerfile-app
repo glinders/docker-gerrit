@@ -61,13 +61,16 @@ COPY gerrit-entrypoint.sh /
 COPY gerrit-start.sh /
 RUN chmod +x /gerrit*.sh
 
-#A directory has to be created before a volume is mounted to it.
-#So gerrit user can own this directory.
-RUN su-exec ${GERRIT_USER} mkdir -p $GERRIT_SITE
+# set our timezone
+RUN apk add tzdata && \
+    cp /usr/share/zoneinfo/Pacific/Auckland /etc/localtime && \
+    echo "Pacific/Auckland" > /etc/timezone && \
+    apk del tzdata
 
-#Gerrit site directory is a volume, so configuration and repositories
-#can be persisted and survive image upgrades.
-VOLUME $GERRIT_SITE
+# here we keep our backups
+RUN mkdir /backup
+# here we restore from
+RUN mkdir /restore
 
 ENTRYPOINT ["/gerrit-entrypoint.sh"]
 

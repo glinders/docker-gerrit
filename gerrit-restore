@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# restore backup in directory /restore to directory /var/gerrit
+# name of archive is gerrit
+cd /
+/tar-restore /restore /var/gerrit gerrit

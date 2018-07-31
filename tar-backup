@@ -1,0 +1,70 @@
+#!/bin/bash
+
+# back up specified files and directories in a specified directory
+# syntax: tar-backup <name> <src_dir> <src_files>
+# - <name>: name for the tar file
+# - <src_dir>: source directory
+# - <src_files>: list of files and directories to back up
+
+# some tools
+. ./common-backup
+
+# name
+NAME=$1; shift
+# target
+TARGET=$1; shift
+
+BU_DIR=/backup
+DATA_DIR=$TARGET
+# tar source files
+TAR_FILES="$*"
+# timestamp and logfile
+TIMESTAMP=`date +'%Y%m%d'`
+LOGFILE=$BU_DIR/$TIMESTAMP.$NAME.backup.log
+
+# create backup directory
+mkdir -p $BU_DIR
+# remove old logfile
+rm -f $LOGFILE
+
+( # redirect all to logfile
+
+# this is our backup
+TARDESTFILE=$BU_DIR/$TIMESTAMP.$NAME.tar.gz
+rm -f $TARDESTFILE
+
+# tar options
+TAR_PRE_OPTIONS="-czf $TARDESTFILE"
+TAR_POST_OPTIONS=""
+
+# tar takes place in the data directory
+pushd $DATA_DIR >/dev/null
+
+# now tar and compress the directories to back up
+tar $TAR_PRE_OPTIONS $TAR_FILES $TAR_POST_OPTIONS
+set_tar_exit $?
+
+echo done creating backups at `date`
+
+# clean up takes place in the backup directory
+pushd $BU_DIR >/dev/null
+# delete archives and logfiles older than 4 days
+find . -depth \( -name '*.log' -o -name '*.tar.gz' \) -mtime +4 -exec echo deleting old file {} \; -delete
+# restore directory now we are done
+popd >/dev/null
+
+# restore directory now we are done
+popd >/dev/null
+
+) 1>>${LOGFILE} 2> >( tee -a ${LOGFILE} >&2 )
+
+echo all done at `date`
+
+if get_tar_exit
+then
+   exit 0
+else
+   echo There were tar errors >&2
+   exit 1
+fi
+

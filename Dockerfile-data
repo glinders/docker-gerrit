@@ -1,0 +1,8 @@
+# Use the same image as the service
+# This way we don't use any additional disk space
+# and the volumes are already defined
+ARG SERVICE_IMAGE
+FROM ${SERVICE_IMAGE}
+
+
+

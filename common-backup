@@ -1,0 +1,20 @@
+#!/bin/bash
+
+export TMPDIR=/tmp
+export TAR_EXIT_FILE=${TMPDIR}/_tar_exit_file_$$ 
+
+function set_tar_exit {
+   if [ "`echo $1`" == "0" ]
+   then
+      echo 0 >${TAR_EXIT_FILE}
+   else
+      echo 1 >${TAR_EXIT_FILE}
+   fi
+}
+
+function get_tar_exit {
+   return `cat ${TAR_EXIT_FILE}`
+}
+
+
+

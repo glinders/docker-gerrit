@@ -1,0 +1,74 @@
+#!/bin/bash
+
+# restore most recent backup in specified directory to a specified directory
+# syntax: tar-restore <src_dir> <dst_dir> <name>
+# - <src_dir>: source directory, containing .tar.gz file
+# - <dst_dir>: destination directory
+# - <name>: basename of the tar.gz file
+# e.g. the basename of file 20180717.trac.tar.gz is trac
+
+if [ "$#" -ne 3 ]; then
+    echo "syntax: $0 <src_dir> <dst_dir> <name>" >&2
+    exit 1
+fi
+
+# some tools
+. ./common-restore
+
+# name
+SRC_DIR=$1; shift
+# target
+DST_DIR=$1; shift
+# basename
+NAME=$1; shift
+
+# get name of most recent archive file
+ARCHIVE=$(ls ${SRC_DIR}/*.${NAME}.tar.gz|sort|tail -n 1)
+# sanity check
+if [ -z "$ARCHIVE" ]; then
+    echo "$0: no matching archive found" >&2
+    exit 1
+fi
+
+# timestamp and logfile
+TIMESTAMP=`date +'%Y%m%d'`
+LOGFILE=$SRC_DIR/$TIMESTAMP.$NAME.restore.log
+
+# create directory to restore to
+mkdir -p $DST_DIR
+# remove old logfile (if any)
+rm -f $LOGFILE
+
+( # redirect all to logfile
+
+# record what we are going to do
+echo "restoring archive $ARCHIVE to $DST_DIR"
+
+# tar options
+TAR_PRE_OPTIONS="-xf"
+TAR_POST_OPTIONS="--directory $DST_DIR"
+
+# restore takes place in the destination directory
+pushd $DST_DIR >/dev/null
+
+# now decompress and untar the directories to restore
+tar $TAR_PRE_OPTIONS $ARCHIVE $TAR_POST_OPTIONS
+set_tar_exit $?
+
+echo done restoring backups at `date`
+
+# restore directory now we are done
+popd >/dev/null
+
+) 1>>${LOGFILE} 2> >( tee -a ${LOGFILE} >&2 )
+
+echo all done at `date`
+
+if get_tar_exit
+then
+   exit 0
+else
+   echo There were tar errors >&2
+   exit 1
+fi
+

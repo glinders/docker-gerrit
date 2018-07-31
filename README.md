@@ -1,3 +1,31 @@
+# Gerrit as a Docker service
+
+Gerrit runs as a service, using a data container.
+
+Data can be backed up and restored using the backup and restore containers
+
+## usage
+
+    make build; make run
+
+## backup
+
+All data resides in directories /var/gerrit/review_site
+Data is backed up to directory /backup (tar.gz file).
+To back up, use command:
+
+    docker start gerrit-app-backup
+
+Use `docker cp gerrit-app:/backup <dest>` to get backups out of container.
+
+## restore
+
+Archive to restore must be one created above (format: 20180724.gerrit.tar.gz).
+Use `docker cp <archive> gerrit-app:/restore` to get archive into container.
+To restore, use command:
+
+    docker start gerrit-app-restore
+
 # Gerrit Docker image
 
  The Gerrit code review system with external database and OpenLDAP integration.

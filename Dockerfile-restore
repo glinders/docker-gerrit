@@ -9,4 +9,6 @@ ADD common-backup /common-restore
 ADD tar-restore /tar-restore
 ADD gerrit-restore /gerrit-restore
 
-CMD ["/gerrit-restore"]
+# overrule the application with our command
+ENTRYPOINT ["/gerrit-restore"]
+CMD [""]

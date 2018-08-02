@@ -8,4 +8,6 @@ ADD common-backup /common-backup
 ADD tar-backup /tar-backup
 ADD gerrit-backup /gerrit-backup
 
-CMD ["/gerrit-backup"]
+# overrule the application with our command
+ENTRYPOINT ["/gerrit-backup"]
+CMD [""]

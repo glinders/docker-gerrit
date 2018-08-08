@@ -49,6 +49,9 @@ DATAVOLUME = $(DATA_NAME)
 
 # environment variables to pass
 ENVVARS = -e WEBURL=$(WEBURL) \
+  -e SMTP_SERVER=smtp.office365.com \
+  -e SMTP_SERVER_PORT=587 \
+  -e SMTP_ENCRYPTION=tls \
   -e AUTH_TYPE=LDAP \
   -e LDAP_SERVER=ldap://$(HOSTNAME) \
   -e LDAP_USERNAME=cn=admin,dc=salcom,dc=com \
@@ -117,11 +120,11 @@ create-data: mv-data
 
 create-backup: create-data mv-backup
 	# create the backup container
-	docker create $(RUN_OPTIONS) --name $(BACKUP_NAME) $(BACKUP_IMAGE)
+	docker create $(VOLUMES_FROM) --name $(BACKUP_NAME) $(BACKUP_IMAGE)
 
 create-restore: create-data mv-restore
 	# create the restore container
-	docker create $(RUN_OPTIONS) --name $(RESTORE_NAME) $(RESTORE_IMAGE)
+	docker create $(VOLUMES_FROM) --name $(RESTORE_NAME) $(RESTORE_IMAGE)
 
 # starting and stopping application container
 #

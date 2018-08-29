@@ -15,7 +15,7 @@ RESTORE_IMAGE = $(RESTORE_NAME):$(VERSION)
 # additional names
 HOSTNAME := $(shell echo `hostname`)
 LDAP_HOST := $(shell echo `hostname`)
-LDAP_IP := $(shell echo `host $(LDAP_HOST)|sed -e 's/^.* //'`)
+LDAP_IP := $(shell echo `host $(LDAP_HOST)|head -n1|sed -e 's/^.* //'`)
 LDAP_HOST_IP := $(LDAP_HOST):$(LDAP_IP)
 
 # hack to set gerrit WEWBURL to the correct value

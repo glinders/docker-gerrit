@@ -1,9 +1,7 @@
 #!/bin/bash
 
-# remove index and temporary files;
-# - index causes gerrit to break after restore
-# - temporary files tend to grow
-rm -rf /var/gerrit/index/* /var/gerrit/tmp/*
+# remove temporary files; they tend to grow
+rm -rf  /var/gerrit/tmp/*
 
 # backup selected directories and files in /var/gerrit; name it 'gerrit'
 cd /

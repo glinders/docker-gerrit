@@ -1,9 +1,7 @@
 #!/bin/bash
 
-# remove index and temporary files;
-# - index doesn't match anymore after restore
-# - temporary files tend to grow
-rm -rf /var/gerrit/index/* /var/gerrit/tmp/*
+# remove temporary files; they tend to grow
+rm -rf /var/gerrit/tmp/*
 
 # restore backup in directory /restore to directory /var/gerrit
 # name of archive is gerrit

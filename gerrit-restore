@@ -1,9 +1,20 @@
 #!/bin/bash
 
-# remove temporary files; they tend to grow
-rm -rf /var/gerrit/tmp/*
-
 # restore backup in directory /restore to directory /var/gerrit
 # name of archive is gerrit
 cd /
 /tar-restore /restore /var/gerrit gerrit
+
+# remove temporary files; they tend to grow
+cd /var/gerrit/review_site
+rm -rf tmp/*
+
+# remove index and gerrit version file;
+# incorrect index id crashes gerrit after restore,
+# so we don't bother backing it up,
+# but perform a reindex after restoring
+# if we remove file /var/gerrit/review_site/gerrit_version,
+# gerrit will run a reindex that recreates the index
+cd /var/gerrit/review_site
+rm -rf gerrit_version index/*
+

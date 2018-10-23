@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # remove temporary files; they tend to grow
-rm -rf  /var/gerrit/tmp/*
+cd /var/gerrit/review_site
+rm -rf tmp/*
 
 # backup selected directories and files in /var/gerrit; name it 'gerrit'
 cd /

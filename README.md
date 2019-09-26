@@ -28,6 +28,10 @@ To restore, use command:
 
 # Gerrit Docker image
 
+[![Docker Stars](https://img.shields.io/docker/stars/openfrontier/gerrit.svg)](https://hub.docker.com/r/openfrontier/gerrit/)
+[![Docker Pulls](https://img.shields.io/docker/pulls/openfrontier/gerrit.svg)](https://hub.docker.com/r/openfrontier/gerrit/)
+[![Docker Automated build](https://img.shields.io/docker/automated/openfrontier/gerrit.svg)](https://hub.docker.com/r/openfrontier/gerrit/)
+
  The Gerrit code review system with external database and OpenLDAP integration.
  This image is based on the openjdk:jre-alpine or the openjdk:jre-slim which makes this image small and fast.
 
@@ -38,21 +42,22 @@ To restore, use command:
 
 #### Alpine base
 
- * openfrontier/gerrit:latest -> 2.15.2
- * openfrontier/gerrit:2.15.x -> 2.15.2
- * openfrontier/gerrit:2.14.x -> 2.14.9
- * openfrontier/gerrit:2.13.x -> 2.13.9
+ * openfrontier/gerrit:latest -> 2.16.7
+ * openfrontier/gerrit:2.15.x -> 2.15.13
+ * openfrontier/gerrit:2.14.x -> 2.14.19
+ * openfrontier/gerrit:2.13.x -> 2.13.11
  * openfrontier/gerrit:2.12.x -> 2.12.7
  * openfrontier/gerrit:2.11.x -> 2.11.10
  * openfrontier/gerrit:2.10.x -> 2.10.6
 
 #### Debian base
 
- * openfrontier/gerrit:2.15.x-slim -> 2.15.2
- * openfrontier/gerrit:2.14.x-slim -> 2.14.9
+ * openfrontier/gerrit:2.15.x-slim -> 2.15.13
+ * openfrontier/gerrit:2.14.x-slim -> 2.14.19
 
 ## Migrate from ReviewDB to NoteDB
-  Since Gerrit 2.15, [NoteDB](https://gerrit-review.googlesource.com/Documentation/note-db.html) is recommended to store account data, group data and change data.
+  Since Gerrit 2.16, [NoteDB](https://gerrit-review.googlesource.com/Documentation/note-db.html) is required to store accounts and groups data.
+  Changes are strongly advised to migrate to NoteDB, too.
   Accounts and Groups are migrated offline to NoteDB automatically during the start up of the container.
   Change data can be migrated to NoteDB offline via the `MIGRATE_TO_NOTEDB_OFFLINE` environment variable.
   Note that migrating changes can takes about twice as long as an offline reindex. In fact, one of the
@@ -60,7 +65,7 @@ To restore, use command:
 
   ```shell
     docker run \
-        -e MIGRATE_TO_NOTEDB_OFFLINE=1 \
+        -e MIGRATE_TO_NOTEDB_OFFLINE=true \
         -v ~/gerrit_volume:/var/gerrit/review_site \
         -p 8080:8080 \
         -p 29418:29418 \
@@ -100,15 +105,16 @@ To restore, use command:
 
     docker run -d --volumes-from gerrit_volume -p 8080:8080 -p 29418:29418 openfrontier/gerrit
 
-## Use local directory as the gerrit site storage.
+## Use a docker named volume as the gerrit site storage.
+  **DO NOT** use host volumes in particular directories under the home directory like `~/gerrit` as a gerrit volume!!! Use [named volume](https://success.docker.com/article/different-types-of-volumes) instead!!!
 
-  1. Create a site directory for the gerrit site.
+  1. Create a docker volume for the gerrit site.
 
-    mkdir ~/gerrit_volume
+    docker volume create gerrit_volume
 
   2. Initialize and start gerrit using the local directory created above.
 
-    docker run -d -v ~/gerrit_volume:/var/gerrit/review_site -p 8080:8080 -p 29418:29418 openfrontier/gerrit
+    docker run -d -v gerrit_volume:/var/gerrit/review_site -p 8080:8080 -p 29418:29418 openfrontier/gerrit
 
 ## Install plugins on start up.
 
@@ -236,7 +242,7 @@ To restore, use command:
     -p 29418:29418 \
     -e AUTH_TYPE=OAUTH \
     # Don't forget to set Gerrit FQDN for correct OAuth
-    -e WEB_URL=http://my-gerrit.example.com/
+    -e WEBURL=http://my-gerrit.example.com \
     -e OAUTH_ALLOW_EDIT_FULL_NAME=true \
     -e OAUTH_ALLOW_REGISTER_NEW_EMAIL=true \
     # Google OAuth
@@ -258,6 +264,29 @@ To restore, use command:
     -e OAUTH_BITBUCKET_FIX_LEGACY_USER_ID=true \
     -d openfrontier/gerrit
   ```
+## Setup Replication with one BitBucket remote
+
+  ```shell
+    docker run \
+    --name gerrit \
+    -p 8080:8080 \
+    -p 29418:29418 \
+    -e WEBURL=http://my-gerrit.example.com \
+    -e DOWNLOAD_SCHEMES="http ssh" \
+    -e GERRIT_INIT_ARGS="--install-plugin=replication" \
+    -e REPLICATION_REMOTES=bitbucket \
+    -e BITBUCKET_REMOTE=https://${BB_USER}@bitbucket.org/${BB_ORG}/${name}.git \
+    -e BITBUCKET_PASSWORD=${BITBUCKET_PASSWORD} \
+    -e BITBUCKET_MIRROR=true \
+    -e BITBUCKET_PROJECTS=example \
+    -e BITBUCKET_REPLICATE_ON_STARTUP=true \
+    -e GITHUB_REMOTE=https://${GH_USER}@github.com/${GH_ORG}/${name}.git \
+    -e GITHUB_PASSWORD=${GITHUB_PASSWORD} \
+    -e GITHUB_MIRROR=true \
+    -e GITHUB_PROJECTS=example \
+    -e GITHUB_REPLICATE_ON_STARTUP=true \
+    -d openfrontier/gerrit
+  ```
 
 ## Using gitiles instead of gitweb
 
@@ -267,6 +296,17 @@ To restore, use command:
     -p 8080:8080 \
     -p 29418:29418 \
     -e GITWEB_TYPE=gitiles \
+    -d openfrontier/gerrit
+  ```
+
+## Restricting download schemes  
+
+  ```shell
+    docker run \
+    --name gerrit \
+    -p 8080:8080 \
+    -p 29418:29418 \
+    -e DOWNLOAD_SCHEMES=http ssh \
     -d openfrontier/gerrit
   ```
 
@@ -318,16 +358,16 @@ before returning which will cause the container to exit soon after.
    There's an [upper project](https://github.com/openfrontier/ci) which privdes sample scripts about how to use this image and a [Jenkins image](https://hub.docker.com/r/openfrontier/jenkins/) to create a Gerrit-Jenkins integration environment. And there's a [compose project](https://github.com/openfrontier/ci-compose) to demonstrate how to utilize docker compose to accomplish the same thing.
 
 ## Sync timezone with the host server.
- 
+
     docker run -d -p 8080:8080 -p 29418:29418 -v /etc/localtime:/etc/localtime:ro openfrontier/gerrit
 
 ## Automatic reindex detection
 
   The docker container automatically writes the current gerrit version into `${GERRIT_HOME}/review_site/gerrit_version`
-  in order to detect whether a full upgrade should be performed. 
+  in order to detect whether a full upgrade should be performed.
   This check can be disabled via the `IGNORE_VERSIONCHECK` environment variable.
 
-  Note that for major version upgrades a full reindex might be necessary. Check the gerrit upgrade notes for details. 
+  Note that for major version upgrades a full reindex might be necessary. Check the gerrit upgrade notes for details.
   For large repositories, the full reindex can take 30min or more.
 
   ```shell

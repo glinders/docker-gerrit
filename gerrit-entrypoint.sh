@@ -9,6 +9,10 @@ set_secure_config() {
   su-exec ${GERRIT_USER} git config -f "${GERRIT_SITE}/etc/secure.config" "$@"
 }
 
+set_replication_config() {
+  su-exec ${GERRIT_USER} git config -f "${GERRIT_SITE}/etc/replication.config" "$@"
+}
+
 wait_for_database() {
   echo "Waiting for database connection $1:$2 ..."
   until nc -z $1 $2; do
@@ -41,7 +45,7 @@ if [ "$1" = "/gerrit-start.sh" ]; then
   # Install external plugins
   su-exec ${GERRIT_USER} cp -f ${GERRIT_HOME}/delete-project.jar ${GERRIT_SITE}/plugins/delete-project.jar
   su-exec ${GERRIT_USER} cp -f ${GERRIT_HOME}/events-log.jar ${GERRIT_SITE}/plugins/events-log.jar
-  su-exec ${GERRIT_USER} cp -f ${GERRIT_HOME}/importer.jar ${GERRIT_SITE}/plugins/importer.jar
+  #su-exec ${GERRIT_USER} cp -f ${GERRIT_HOME}/importer.jar ${GERRIT_SITE}/plugins/importer.jar
 
   # Provide a way to customise this image
   echo
@@ -54,14 +58,72 @@ if [ "$1" = "/gerrit-start.sh" ]; then
     echo
   done
 
+#Replication config
+if [ -n "${REPLICATION_REMOTES}" ]; then
+  set_replication_config gerrit.autoReload "true"
+fi
+
+for r in $REPLICATION_REMOTES; do
+  REMOTE=`eval $(echo echo \\$$(echo "${r}_REMOTE"| awk '{print toupper($0)}'))`
+  PASSWD=`eval $(echo echo \\$$(echo "${r}_PASSWORD"| awk '{print toupper($0)}'))`
+  MIRROR=`eval $(echo echo \\$$(echo "${r}_MIRROR"| awk '{print toupper($0)}'))`
+  PROJECTS=`eval $(echo echo \\$$(echo "${r}_PROJECTS"| awk '{print toupper($0)}'))`
+  REPLICATE_ON_STARTUP=`eval $(echo echo \\$$(echo "${r}_REPLICATE_ON_STARTUP"| awk '{print toupper($0)}'))`
+
+  [ -z "${PASSWD}" ]               || set_secure_config remote.$r.password "${PASSWD}"
+  [ -z "${REPLICATE_ON_STARTUP}" ] || set_replication_config gerrit.replicateOnStartup "${REPLICATE_ON_STARTUP}"
+  [ -z "${REMOTE}" ]               || set_replication_config remote.$r.url "${REMOTE}"
+  [ -z "${MIRROR}" ]               || set_replication_config remote.$r.mirror "${MIRROR}"
+  [ -z "${PROJECTS}" ]             || set_replication_config remote.$r.projects "${PROJECTS}"
+
+cat <<EOF >> $GERRIT_SITE/etc/replication.config
+[remote "$r"]
+	push = +refs/tags/*:refs/tags/*
+	push = +refs/heads/*:refs/heads/*
+EOF
+done
+
   #Customize gerrit.config
+  #Section download
+  if [ -n "${DOWNLOAD_SCHEMES}" ]; then
+    set_gerrit_config --unset-all download.scheme || true
+    for s in ${DOWNLOAD_SCHEMES}; do
+      set_gerrit_config --add download.scheme ${s}
+    done
+  fi
 
   #Section gerrit
-  [ -z "${WEBURL}" ] || set_gerrit_config gerrit.canonicalWebUrl "${WEBURL}"
-  [ -z "${GITHTTPURL}" ] || set_gerrit_config gerrit.gitHttpUrl "${GITHTTPURL}"
+  [ -z "${UI}" ]             || set_gerrit_config gerrit.ui "${UI}"
+  [ -z "${GWT_UI}" ]         || set_gerrit_config gerrit.enableGwtUi "${GWT_UI}"
+  [ -z "${WEBURL}" ]         || set_gerrit_config gerrit.canonicalWebUrl "${WEBURL}"
+  [ -z "${GITURL}" ]         || set_gerrit_config gerrit.canonicalGitUrl "${GITURL}"
+  [ -z "${DOCURL}" ]         || set_gerrit_config gerrit.docUrl "${DOCURL}"
+  [ -z "${GITHTTPURL}" ]     || set_gerrit_config gerrit.gitHttpUrl "${GITHTTPURL}"
+  if [ -n "${BUGURL}" ]; then   set_gerrit_config gerrit.reportBugUrl "${BUGURL}"
+    [ -z "${BUGTEXT}" ]      || set_gerrit_config gerrit.reportBugText "${BUGTEXT}"
+  fi
+  [ -z "${SERVER_ID}" ]      || set_gerrit_config gerrit.serverId "${SERVER_ID}"
+  [ -z "${EDIT_GPG}" ]       || set_gerrit_config gerrit.editGpgKeys "${EDIT_GPG}"
+  [ -z "${IFRAME}" ]         || set_gerrit_config gerrit.canLoadInIFrame "${IFRAME}"
+  [ -z "${CDN_PATH}" ]       || set_gerrit_config gerrit.cdnPath "${CDN_PATH}"
+  [ -z "${BASE_PATH}" ]      || set_gerrit_config gerrit.basePath "${BASE_PATH}"
+  [ -z "${FAVICON_PATH}" ]   || set_gerrit_config gerrit.faviconPath "${FAVICON_PATH}"
+  [ -z "${ALL_USERS}" ]      || set_gerrit_config gerrit.allUsers "${ALL_USERS}"
+  [ -z "${ALL_PROJECTS}" ]   || set_gerrit_config gerrit.allProjects "${ALL_PROJECTS}"
+  [ -z "${INSTANCE_NAME}" ]  || set_gerrit_config gerrit.instanceName "${INSTANCE_NAME}"
+  [ -z "${INSTALL_MODULE}" ] || set_gerrit_config gerrit.installModule "${INSTALL_MODULE}"
+
+  [ -z "${SECURE_STORE_CLASS}" ]         || set_gerrit_config gerrit.secureStoreClass "${SECURE_STORE_CLASS}"
+  [ -z "${INSTALL_COMMIT_MSG_HOOK}" ]    || set_gerrit_config gerrit.installCommitMsgHookCommand "${INSTALL_COMMIT_MSG_HOOK}"
+  [ -z "${DISABLE_REVERSE_DNS_LOOKUP}" ] || set_gerrit_config gerrit.disableReverseDnsLookup "$DISABLE_REVERSE_DNS_LOOKUP}"
+
+  [ -z "${PRIMARY_WEBLINK_NAME}" ]     || set_gerrit_config gerrit.primaryWeblinkName "${PRIMARY_WEBLINK_NAME}"
+  [ -z "${LIST_PROJECTS_FROM_INDEX}" ] || set_gerrit_config gerrit.listProjectsFromIndex "${LIST_PROJECTS_FROM_INDEX}"
 
   #Section sshd
-  [ -z "${LISTEN_ADDR}" ] || set_gerrit_config sshd.listenAddress "${LISTEN_ADDR}"
+  [ -z "${LISTEN_ADDR}" ]             || set_gerrit_config sshd.listenAddress "${LISTEN_ADDR}"
+  [ -z "${SSHD_ADVERTISE_ADDR}" ]     || set_gerrit_config sshd.advertisedAddress "${SSHD_ADVERTISE_ADDR}"
+  [ -z "${SSHD_ENABLE_COMPRESSION}" ] || set_gerrit_config sshd.enableCompression "${SSHD_ENABLE_COMPRESSION}"
 
   #Section database
   if [ "${DATABASE_TYPE}" = 'postgresql' ]; then
@@ -88,7 +150,9 @@ if [ "$1" = "/gerrit-start.sh" ]; then
   [ -z "${DATABASE_DATABASE}" ] || set_gerrit_config database.database "${DATABASE_DATABASE}"
   [ -z "${DATABASE_USERNAME}" ] || set_gerrit_config database.username "${DATABASE_USERNAME}"
   [ -z "${DATABASE_PASSWORD}" ] || set_secure_config database.password "${DATABASE_PASSWORD}"
-  # Other unnecessary options
+  # JDBC URL
+  [ -z "${DATABASE_URL}" ] || set_gerrit_config database.url "${DATABASE_URL}"
+  # Other database options
   [ -z "${DATABASE_CONNECTION_POOL}" ] || set_secure_config database.connectionPool "${DATABASE_CONNECTION_POOL}"
   [ -z "${DATABASE_POOL_LIMIT}" ]      || set_secure_config database.poolLimit "${DATABASE_POOL_LIMIT}"
   [ -z "${DATABASE_POOL_MIN_IDLE}" ]   || set_secure_config database.poolMinIdle "${DATABASE_POOL_MIN_IDLE}"
@@ -97,7 +161,7 @@ if [ "$1" = "/gerrit-start.sh" ]; then
 
   #Section noteDB
   [ -z "${NOTEDB_ACCOUNTS_SEQUENCEBATCHSIZE}" ] || set_gerrit_config noteDB.accounts.sequenceBatchSize "${NOTEDB_ACCOUNTS_SEQUENCEBATCHSIZE}"
-  [ -z "${NOTEDB_CHANGES_AUTOMIGRATE}" ]        || set_gerrit_config noteDB.changes.autoMigrate "${NOTEDB_ACCOUNTS_SEQUENCEBATCHSIZE}"
+  [ -z "${NOTEDB_CHANGES_AUTOMIGRATE}" ]        || set_gerrit_config noteDB.changes.autoMigrate "${NOTEDB_CHANGES_AUTOMIGRATE}"
 
   #Section auth
   [ -z "${AUTH_TYPE}" ]                  || set_gerrit_config auth.type "${AUTH_TYPE}"
@@ -158,7 +222,7 @@ if [ "$1" = "/gerrit-start.sh" ]; then
 
   #Section OAUTH general
   if [ "${AUTH_TYPE}" = 'OAUTH' ]  ; then
-    su-exec ${GERRIT_USER} cp -f ${GERRIT_HOME}/gerrit-oauth-provider.jar ${GERRIT_SITE}/plugins/gerrit-oauth-provider.jar
+    su-exec ${GERRIT_USER} cp -f ${GERRIT_HOME}/oauth.jar ${GERRIT_SITE}/plugins/oauth.jar
     [ -z "${OAUTH_ALLOW_EDIT_FULL_NAME}" ]     || set_gerrit_config oauth.allowEditFullName "${OAUTH_ALLOW_EDIT_FULL_NAME}"
     [ -z "${OAUTH_ALLOW_REGISTER_NEW_EMAIL}" ] || set_gerrit_config oauth.allowRegisterNewEmail "${OAUTH_ALLOW_REGISTER_NEW_EMAIL}"
 
@@ -258,20 +322,8 @@ if [ "$1" = "/gerrit-start.sh" ]; then
   if [ $? -eq 0 ]; then
     GERRIT_VERSIONFILE="${GERRIT_SITE}/gerrit_version"
 
-    if [ -n "${MIGRATE_TO_NOTEDB_OFFLINE}" ]; then
-      echo "Migrating changes from ReviewDB to NoteDB..."
-      su-exec ${GERRIT_USER} java ${JAVA_OPTIONS} ${JAVA_MEM_OPTIONS} -jar "${GERRIT_WAR}" migrate-to-note-db -d "${GERRIT_SITE}"
-      if [ $? -eq 0 ]; then
-        echo "Upgrading is OK. Writing versionfile ${GERRIT_VERSIONFILE}"
-        su-exec ${GERRIT_USER} touch "${GERRIT_VERSIONFILE}"
-        su-exec ${GERRIT_USER} echo "${GERRIT_VERSION}" > "${GERRIT_VERSIONFILE}"
-        echo "${GERRIT_VERSIONFILE} written."
-        IGNORE_VERSIONCHECK=1
-      else
-        echo "Upgrading fail!"
-      fi
-    fi
-    if [ -n "${IGNORE_VERSIONCHECK}" ]; then
+    # MIGRATE_TO_NOTEDB_OFFLINE will override IGNORE_VERSIONCHECK
+    if [ -n "${IGNORE_VERSIONCHECK}" ] && [ -z "${MIGRATE_TO_NOTEDB_OFFLINE}" ]; then
       echo "Don't perform a version check and never do a full reindex"
       NEED_REINDEX=0
     else
@@ -293,8 +345,13 @@ if [ "$1" = "/gerrit-start.sh" ]; then
       fi
     fi
     if [ ${NEED_REINDEX} -eq 1 ]; then
-      echo "Reindexing..."
-      su-exec ${GERRIT_USER} java ${JAVA_OPTIONS} ${JAVA_MEM_OPTIONS} -jar "${GERRIT_WAR}" reindex --verbose -d "${GERRIT_SITE}"
+      if [ -n "${MIGRATE_TO_NOTEDB_OFFLINE}" ]; then
+        echo "Migrating changes from ReviewDB to NoteDB..."
+        su-exec ${GERRIT_USER} java ${JAVA_OPTIONS} ${JAVA_MEM_OPTIONS} -jar "${GERRIT_WAR}" migrate-to-note-db -d "${GERRIT_SITE}"
+      else
+        echo "Reindexing..."
+        su-exec ${GERRIT_USER} java ${JAVA_OPTIONS} ${JAVA_MEM_OPTIONS} -jar "${GERRIT_WAR}" reindex --verbose -d "${GERRIT_SITE}"
+      fi
       if [ $? -eq 0 ]; then
         echo "Upgrading is OK. Writing versionfile ${GERRIT_VERSIONFILE}"
         su-exec ${GERRIT_USER} touch "${GERRIT_VERSIONFILE}"

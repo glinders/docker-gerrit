@@ -42,18 +42,22 @@ To restore, use command:
 
 #### Alpine base
 
- * openfrontier/gerrit:latest -> 2.16.7
- * openfrontier/gerrit:2.15.x -> 2.15.13
- * openfrontier/gerrit:2.14.x -> 2.14.19
- * openfrontier/gerrit:2.13.x -> 2.13.11
+ * openfrontier/gerrit:latest -> 3.3.2
+ * openfrontier/gerrit:3.2.x -> 3.2.7
+ * openfrontier/gerrit:3.1.x -> 3.1.12
+ * openfrontier/gerrit:3.0.x  -> 3.0.15
+ * openfrontier/gerrit:2.16.x -> 2.16.26
+ * openfrontier/gerrit:2.15.x -> 2.15.18
+ * openfrontier/gerrit:2.14.x -> 2.14.20
+ * openfrontier/gerrit:2.13.x -> 2.13.14
  * openfrontier/gerrit:2.12.x -> 2.12.7
  * openfrontier/gerrit:2.11.x -> 2.11.10
  * openfrontier/gerrit:2.10.x -> 2.10.6
 
 #### Debian base
 
- * openfrontier/gerrit:2.15.x-slim -> 2.15.13
- * openfrontier/gerrit:2.14.x-slim -> 2.14.19
+ * openfrontier/gerrit:2.15.x-slim -> 2.15.18
+ * openfrontier/gerrit:2.14.x-slim -> 2.14.20
 
 ## Migrate from ReviewDB to NoteDB
   Since Gerrit 2.16, [NoteDB](https://gerrit-review.googlesource.com/Documentation/note-db.html) is required to store accounts and groups data.
@@ -264,7 +268,7 @@ To restore, use command:
     -e OAUTH_BITBUCKET_FIX_LEGACY_USER_ID=true \
     -d openfrontier/gerrit
   ```
-## Setup Replication with one BitBucket remote
+## Setup Replication to multiple remotes 
 
   ```shell
     docker run \
@@ -274,17 +278,24 @@ To restore, use command:
     -e WEBURL=http://my-gerrit.example.com \
     -e DOWNLOAD_SCHEMES="http ssh" \
     -e GERRIT_INIT_ARGS="--install-plugin=replication" \
-    -e REPLICATION_REMOTES=bitbucket \
-    -e BITBUCKET_REMOTE=https://${BB_USER}@bitbucket.org/${BB_ORG}/${name}.git \
-    -e BITBUCKET_PASSWORD=${BITBUCKET_PASSWORD} \
+    -e REPLICATION_REMOTES="bitbucket github" \
+    -e REPLICATE_ON_STARTUP=true \
+    -e REPLICATION_MAX_RETRIES=3 \
+    -e BITBUCKET_URL=https://bitbucket.org/${BB_ORG}/${name}.git \
+    -e BITBUCKET_PROJECTS="demo* prod*" \
+    -e BITBUCKET_USERNAME=${BB_USER} \
+    -e BITBUCKET_PASSWORD=${BB_PASSWORD} \
     -e BITBUCKET_MIRROR=true \
-    -e BITBUCKET_PROJECTS=example \
-    -e BITBUCKET_REPLICATE_ON_STARTUP=true \
-    -e GITHUB_REMOTE=https://${GH_USER}@github.com/${GH_ORG}/${name}.git \
-    -e GITHUB_PASSWORD=${GITHUB_PASSWORD} \
-    -e GITHUB_MIRROR=true \
-    -e GITHUB_PROJECTS=example \
-    -e GITHUB_REPLICATE_ON_STARTUP=true \
+    -e BITBUCKET_TIMEOUT=60 \
+    -e BITBUCKET_THREADS=2 \
+    -e BITBUCKET_RESCHEDULE_DELAY=15 \
+    -e BITBUCKET_REPLICATION_DELAY=15 \
+    -e BITBUCKET_REPLICATION_RETRY=1 \
+    -e BITBUCKET_REPLICATION_MAX_RETRIES=5 \
+    -e BITBUCKET_REPLICATE_PERMISSIONS=false \
+    -e BITBUCKET_CREATE_MISSING_REPOSITORIES=false \
+    -e GITHUB_URL=https://${GH_USER}@github.com/${GH_ORG}/${name}.git \
+    -e GITHUB_PASSWORD=${GH_PASSWORD} \
     -d openfrontier/gerrit
   ```
 

@@ -4,6 +4,12 @@ Gerrit runs as a service, using a data container.
 
 Data can be backed up and restored using the backup and restore containers
 
+## config
+
+Ensure your hostname matches the actual server.
+
+File `Makefile` takes the hostname and uses it to set the LDAP server and the canonical web URL for gerrit.
+
 ## usage
 
     make build; make run

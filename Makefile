@@ -23,10 +23,20 @@ ifeq ($(HOSTNAME),ubox0)
   WEBURL := http://gerrit
 else ifeq ($(HOSTNAME),ubox1)
   WEBURL := http://gerrit1
-else ifeq ($(HOSTNAME),lbox0)
+else ifeq ($(HOSTNAME),ubox2)
   WEBURL := http://gerrit2
+else ifeq ($(HOSTNAME),ubox3)
+  WEBURL := http://gerrit3
+else ifeq ($(HOSTNAME),lbox0)
+  WEBURL := http://gerrit10
+else ifeq ($(HOSTNAME),lbox1)
+  WEBURL := http://gerrit11
+else ifeq ($(HOSTNAME),lbox2)
+  WEBURL := http://gerrit12
+else ifeq ($(HOSTNAME),lbox3)
+  WEBURL := http://gerrit13
 else
-  WEBURL := http://gerrit
+  WEBURL := http://gerrit_unknown_hostname
 endif
 
 # port numbers and IP addresses
